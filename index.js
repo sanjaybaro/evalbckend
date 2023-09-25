@@ -1,22 +1,23 @@
 const express = require("express");
+const cors = require("cors");
 const { connection } = require("./config/db");
 const { postRouter } = require("./routes/post.routes");
 const { userRouter } = require("./routes/user.routes");
 
 const app = express();
-
-require("dotenv").config();
-
-const PORT = process.env.PORT;
-
 app.use(express.json());
+app.use(cors());
+
+// require("dotenv").config();
+
 app.use("/users", userRouter);
 app.use("/posts", postRouter);
 
 app.get("/", (req, res) => {
-  res.send("Welcome to Home Page");
+  res.status(200).send({ msg: "Welcome to Home Page" });
 });
 
+let PORT = process.env.PORT;
 app.listen(PORT),
   async () => {
     try {

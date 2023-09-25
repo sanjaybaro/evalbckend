@@ -5,8 +5,8 @@ const postSchema = mongoose.Schema(
     title: String,
     body: String,
     device: String,
-    userID: String,
-    
+    userId: String,
+    username: String,
   },
   {
     versionKey: false,

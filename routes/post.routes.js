@@ -1,70 +1,68 @@
-const { query } = require("express");
 const express = require("express");
-const { authMiddleware } = require("../middlewares/auth.middleware");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 const { PostModel } = require("../model/postmodel");
-const { UserModel } = require("../model/usermodel");
+const { authMiddleware } = require("../middlewares/auth.middleware");
 const postRouter = express.Router();
+postRouter.use(authMiddleware);
 
-postRouter.get("/", authMiddleware, async (req, res) => {
-  if (req.query.device1) {
-    query.device1 = req.query.device1;
-  }
-  if (req.query.device2) {
-    query.device2 = req.query.device2;
-  }
-  if (req.query.device3) {
-    query.device3 = req.query.device3;
+postRouter.get("/", async (req, res) => {
+  const { device1, device2 } = req.query;
+  let query = {};
+  if (device1 && device2) {
+    query.device = { $and: [{ device: device1 }, { device: device2 }] };
+  } else if (device1) {
+    query.device = device1;
+  } else if (device2) {
+    query.device = device2;
   }
   try {
-    let posts = await PostModel.find({ userID: req.body.userID, ...query });
-    console.log(posts);
-    res.status(200).send(posts);
-  } catch (error) {
-    console.log(error);
-    res.status(500).send({ error: "internal server error" });
+    const posts = await PostModel.find(query);
+    res.status(200).json({ msg: "User has been Posts", posts });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 
 postRouter.post("/add", authMiddleware, async (req, res) => {
+  const { userID } = req.body;
   try {
-    const newPost = new PostModel(req.body);
-    const user = await UserModel.findOne({ _id: req.body.userID });
-    // const count = Number(user.posts) + 1;
-    await UserModel.findByIdAndUpdate({ _id: req.body.userID });
-    const post = await newPost.save();
-    res.status(200).send({ msg: "new post added", post: post });
-  } catch (error) {
-    res.status(501).send({ error: "internal server error" });
+    const post = new PostModel({ ...req.body, userID });
+
+    await post.save();
+    res.status(200).send({ msg: "user Post has been added" });
+  } catch (err) {
+    res.status(400).send({ error: err });
   }
 });
 
-postRouter.patch("/update/:id", authMiddleware, async (req, res) => {
-  const { id } = req.params;
+postRouter.patch("/update/:Id", async (req, res) => {
+  const { Id } = req.params;
+  const note = await PostModel.findOne({ _id: Id });
   try {
-    const post = await PostModel.findOne({ _id: id });
-    if (post.userID == req.body.userID) {
-      await PostModel.findByIdAndUpdate({ _id: id }, req.body);
-      res.send({ msg: "post updated" });
+    if (req.body.userId !== note.userId) {
+      res.status(400).send({ error: "You are not authorized" });
     } else {
-      res.status(400).send({ error: "you are not authorized" });
+      await PostModel.findByIdAndUpdate({ _id: Id }, req.body);
+      res.status(200).send({ msg: "User Post Updated" });
     }
-  } catch (error) {
-    res.status(500).send({ error: "internal server error" });
+  } catch (err) {
+    res.status(400).send({ error: err });
   }
 });
 
-postRouter.delete("/delete/:id", authMiddleware, async (req, res) => {
-  const { id } = req.params;
+postRouter.delete("/delete/:Id", async (req, res) => {
+  const { Id } = req.params;
+  const note = await PostModel.findOne({ _id: Id });
   try {
-    const post = await PostModel.findOne({ _id: id });
-    if (post.userID == req.body.userID) {
-      await PostModel.findByIdAndDelete({ _id: id }, req.body);
-      res.send({ msg: "post deleted" });
+    if (req.body.userId !== note.userId) {
+      res.status(400).send({ error: "You are not authorized" });
     } else {
-      res.status(402).send({ error: "you are not authorized" });
+      await PostModel.findByIdAndDelete({ _id: Id });
+      res.status(200).send({ msg: " User Post Delete" });
     }
-  } catch (error) {
-    res.status(500).send({ error: "internal server error" });
+  } catch (err) {
+    res.status(400).send({ error: err });
   }
 });
 
